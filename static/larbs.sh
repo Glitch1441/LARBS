@@ -261,8 +261,8 @@ finalize() {
 ### This is how everything happens in an intuitive format and order.
 
 # Check if user is root on Arch distro. Install whiptail.
-pacman --noconfirm --needed -Sy libnewt ||
-	error "Are you sure you're running this as the root user, are on an Arch-based distribution and have an internet connection?"
+#pacman --noconfirm --needed -Sy libnewt ||
+	#error "Are you sure you're running this as the root user, are on an Arch-based distribution and have an internet connection?"
 
 # Welcome user and pick dotfiles.
 welcomemsg || error "User exited."
