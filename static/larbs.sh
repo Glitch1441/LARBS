@@ -82,7 +82,7 @@ refreshkeys() {
 		pacman --noconfirm -S archlinux-keyring >/dev/null 2>&1
 		;;
 	*)
-		whiptail --infobox "Enabling Arch Repositories..." 7 40
+		whiptail --infobox "Enabling Arch Repositories for more a more extensive software collection..." 7 40
 		if ! grep -q "^\[universe\]" /etc/pacman.conf; then
 			echo "[universe]
 Server = https://universe.artixlinux.org/\$arch
@@ -203,23 +203,43 @@ vimplugininstall() {
 }
 
 makeuserjs(){
+	# Get the Arkenfox user.js and prepare it.
 	arkenfox="$pdir/arkenfox.js"
-	larbs="/home/$name/.config/firefox/larbs.js"
+	overrides="$pdir/user-overrides.js"
 	userjs="$pdir/user.js"
+	ln -fs "/home/$name/.config/firefox/larbs.js" "$overrides"
 	[ ! -f "$arkenfox" ] && curl -sL "https://raw.githubusercontent.com/arkenfox/user.js/master/user.js" > "$arkenfox"
-	cat "$arkenfox" "$larbs" > "$userjs"
+	cat "$arkenfox" "$overrides" > "$userjs"
 	chown "$name:wheel" "$arkenfox" "$userjs"
+	# Install the updating script.
+	mkdir -p /usr/local/lib /etc/pacman.d/hooks
+	cp "/home/$name/.local/bin/arkenfox-auto-update" /usr/local/lib/
+	chown root:root /usr/local/lib/arkenfox-auto-update
+	chmod 755 /usr/local/lib/arkenfox-auto-update
+	# Trigger the update when needed via a pacman hook.
+	echo "[Trigger]
+Operation = Upgrade
+Type = Package
+Target = firefox
+Target = librewolf
+Target = librewolf-bin
+[Action]
+Description=Update Arkenfox user.js
+When=PostTransaction
+Depends=arkenfox-user.js
+Exec=/usr/local/lib/arkenfox-auto-update" > /etc/pacman.d/hooks/arkenfox.hook
 }
 
 installffaddons(){
+	addonlist="ublock-origin decentraleyes istilldontcareaboutcookies vim-vixen"
 	addontmp="$(mktemp -d)"
 	trap "rm -fr $addontmp" HUP INT QUIT TERM PWR EXIT
-	IFS='
-'
+	IFS=' '
 	sudo -u "$name" mkdir -p "$pdir/extensions/"
 	for addon in $addonlist; do
-		file="${addon##*/}"
-		sudo -u "$name" curl -LOs "$addon" > "$addontmp/$file"
+		addonurl="$(curl --silent "https://addons.mozilla.org/en-US/firefox/addon/${addon}/" | grep -o 'https://addons.mozilla.org/firefox/downloads/file/[^"]*')"
+		file="${addonurl##*/}"
+		sudo -u "$name" curl -LOs "$addonurl" > "$addontmp/$file"
 		id="$(unzip -p "$file" manifest.json | grep "\"id\"")"
 		id="${id%\"*}"
 		id="${id##*\"}"
@@ -227,9 +247,8 @@ installffaddons(){
 	done
 	# Fix a Vim Vixen bug with dark mode not fixed on upstream:
 	sudo -u "$name" mkdir -p "$pdir/chrome"
-	[ ! -f  "$pdir/chrome/userContent.css" ] && sudo -u "$name" echo ".vimvixen-console-frame {
-  color-scheme: light !important;
-}" > "$pdir/chrome/userContent.css"
+	[ ! -f  "$pdir/chrome/userContent.css" ] && sudo -u "$name" echo ".vimvixen-console-frame { color-scheme: light !important; }
+#category-more-from-mozilla { display: none !important }" > "$pdir/chrome/userContent.css"
 }
 
 finalize() {
@@ -334,11 +353,6 @@ EndSection' >/etc/X11/xorg.conf.d/40-libinput.conf
 # All this below to get Librewolf installed with add-ons and non-bad settings.
 
 whiptail --infobox "Setting browser privacy settings and add-ons..." 7 60
-
-addonlist="https://addons.mozilla.org/firefox/downloads/file/3929378/ublock_origin-1.42.0-an+fx.xpi
-https://addons.mozilla.org/firefox/downloads/file/3902154/decentraleyes-2.0.17.xpi
-https://addons.mozilla.org/firefox/downloads/file/4035245/istilldontcareaboutcookies-1.1.0.xpi
-https://addons.mozilla.org/firefox/downloads/file/3845233/vim_vixen-1.2.3-an+fx.xpi"
 
 browserdir="/home/$name/.librewolf"
 profilesini="$browserdir/profiles.ini"
