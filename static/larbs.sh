@@ -14,7 +14,7 @@ repobranch="master"
 ### FUNCTIONS ###
 
 installpkg() {
-	pacman --noconfirm --needed -S "$1" >/dev/null 2>&1
+	nix-env -iA nixos."$1" >/dev/null 2>&1
 }
 
 error() {
@@ -75,53 +75,53 @@ adduserandpass() {
 	unset pass1 pass2
 }
 
-refreshkeys() {
-	case "$(readlink -f /sbin/init)" in
-	*systemd*)
-		whiptail --infobox "Refreshing Arch Keyring..." 7 40
-		pacman --noconfirm -S archlinux-keyring >/dev/null 2>&1
-		;;
-	*)
-		whiptail --infobox "Enabling Arch Repositories for more a more extensive software collection..." 7 40
-		if ! grep -q "^\[universe\]" /etc/pacman.conf; then
-			echo "[universe]
-Server = https://universe.artixlinux.org/\$arch
-Server = https://mirror1.artixlinux.org/universe/\$arch
-Server = https://mirror.pascalpuffke.de/artix-universe/\$arch
-Server = https://artixlinux.qontinuum.space/artixlinux/universe/os/\$arch
-Server = https://mirror1.cl.netactuate.com/artix/universe/\$arch
-Server = https://ftp.crifo.org/artix-universe/" >>/etc/pacman.conf
-			pacman -Sy --noconfirm >/dev/null 2>&1
-		fi
-		pacman --noconfirm --needed -S \
-			artix-keyring artix-archlinux-support >/dev/null 2>&1
-		for repo in extra community; do
-			grep -q "^\[$repo\]" /etc/pacman.conf ||
-				echo "[$repo]
-Include = /etc/pacman.d/mirrorlist-arch" >>/etc/pacman.conf
-		done
-		pacman -Sy >/dev/null 2>&1
-		pacman-key --populate archlinux >/dev/null 2>&1
-		;;
-	esac
-}
+#refreshkeys() {
+	#case "$(readlink -f /sbin/init)" in
+	#*systemd*)
+		#whiptail --infobox "Refreshing NixOS Keyring..." 7 40
+		#pacman --noconfirm -S archlinux-keyring >/dev/null 2>&1
+		#;;
+	#*)
+		#whiptail --infobox "Enabling Arch Repositories for more a more extensive software collection..." 7 40
+		#if ! grep -q "^\[universe\]" /etc/pacman.conf; then
+			#echo "[universe]
+#Server = https://universe.artixlinux.org/\$arch
+#Server = https://mirror1.artixlinux.org/universe/\$arch
+#Server = https://mirror.pascalpuffke.de/artix-universe/\$arch
+#Server = https://artixlinux.qontinuum.space/artixlinux/universe/os/\$arch
+#Server = https://mirror1.cl.netactuate.com/artix/universe/\$arch
+#Server = https://ftp.crifo.org/artix-universe/" >>/etc/pacman.conf
+			#pacman -Sy --noconfirm >/dev/null 2>&1
+		#fi
+		#pacman --noconfirm --needed -S \
+			#artix-keyring artix-archlinux-support >/dev/null 2>&1
+		#for repo in extra community; do
+			#grep -q "^\[$repo\]" /etc/pacman.conf ||
+				#echo "[$repo]
+#Include = /etc/pacman.d/mirrorlist-arch" >>/etc/pacman.conf
+		#done
+		#pacman -Sy >/dev/null 2>&1
+		#pacman-key --populate archlinux >/dev/null 2>&1
+		#;;
+	#esac
+#}
 
-manualinstall() {
+#manualinstall() {
 	# Installs $1 manually. Used only for AUR helper here.
 	# Should be run after repodir is created and var is set.
-	pacman -Qq "$1" && return 0
-	whiptail --infobox "Installing \"$1\" manually." 7 50
-	sudo -u "$name" mkdir -p "$repodir/$1"
-	sudo -u "$name" git -C "$repodir" clone --depth 1 --single-branch \
-		--no-tags -q "https://aur.archlinux.org/$1.git" "$repodir/$1" ||
-		{
-			cd "$repodir/$1" || return 1
-			sudo -u "$name" git pull --force origin master
-		}
-	cd "$repodir/$1" || exit 1
-	sudo -u "$name" -D "$repodir/$1" \
-		makepkg --noconfirm -si >/dev/null 2>&1 || return 1
-}
+	#pacman -Qq "$1" && return 0
+	#whiptail --infobox "Installing \"$1\" manually." 7 50
+	#sudo -u "$name" mkdir -p "$repodir/$1"
+	#sudo -u "$name" git -C "$repodir" clone --depth 1 --single-branch \
+		#--no-tags -q "https://aur.archlinux.org/$1.git" "$repodir/$1" ||
+		#{
+			#cd "$repodir/$1" || return 1
+			#sudo -u "$name" git pull --force origin master
+		#}
+	#cd "$repodir/$1" || exit 1
+	#sudo -u "$name" -D "$repodir/$1" \
+		#makepkg --noconfirm -si >/dev/null 2>&1 || return 1
+#}
 
 maininstall() {
 	# Installs all needed programs from main repo.
@@ -147,12 +147,12 @@ gitmakeinstall() {
 	cd /tmp || return 1
 }
 
-aurinstall() {
-	whiptail --title "LARBS Installation" \
-		--infobox "Installing \`$1\` ($n of $total) from the AUR. $1 $2" 9 70
-	echo "$aurinstalled" | grep -q "^$1$" && return 1
-	sudo -u "$name" $aurhelper -S --noconfirm "$1" >/dev/null 2>&1
-}
+#aurinstall() {
+	#whiptail --title "LARBS Installation" \
+		#--infobox "Installing \`$1\` ($n of $total) from the AUR. $1 $2" 9 70
+	#echo "$aurinstalled" | grep -q "^$1$" && return 1
+	#sudo -u "$name" $aurhelper -S --noconfirm "$1" >/dev/null 2>&1
+#}
 
 pipinstall() {
 	whiptail --title "LARBS Installation" \
@@ -165,13 +165,13 @@ installationloop() {
 	([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) ||
 		curl -Ls "$progsfile" | sed '/^#/d' >/tmp/progs.csv
 	total=$(wc -l </tmp/progs.csv)
-	aurinstalled=$(pacman -Qqm)
+	#aurinstalled=$(pacman -Qqm)
 	while IFS=, read -r tag program comment; do
 		n=$((n + 1))
 		echo "$comment" | grep -q "^\".*\"$" &&
 			comment="$(echo "$comment" | sed -E "s/(^\"|\"$)//g")"
 		case "$tag" in
-		"A") aurinstall "$program" "$comment" ;;
+		#"A") aurinstall "$program" "$comment" ;;
 		"G") gitmakeinstall "$program" "$comment" ;;
 		"P") pipinstall "$program" "$comment" ;;
 		*) maininstall "$program" "$comment" ;;
@@ -279,8 +279,8 @@ preinstallmsg || error "User exited."
 ### The rest of the script requires no user input.
 
 # Refresh Arch keyrings.
-refreshkeys ||
-	error "Error automatically refreshing Arch keyring. Consider doing so manually."
+#refreshkeys ||
+	#error "Error automatically refreshing Arch keyring. Consider doing so manually."
 
 for x in curl ca-certificates base-devel git ntp zsh; do
 	whiptail --title "LARBS Installation" \
@@ -302,13 +302,13 @@ trap 'rm -f /etc/sudoers.d/larbs-temp' HUP INT QUIT TERM PWR EXIT
 echo "%wheel ALL=(ALL) NOPASSWD: ALL" >/etc/sudoers.d/larbs-temp
 
 # Make pacman colorful, concurrent downloads and Pacman eye-candy.
-grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
-sed -Ei "s/^#(ParallelDownloads).*/\1 = 5/;/^#Color$/s/#//" /etc/pacman.conf
+#grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
+#sed -Ei "s/^#(ParallelDownloads).*/\1 = 5/;/^#Color$/s/#//" /etc/pacman.conf
 
 # Use all cores for compilation.
-sed -i "s/-j2/-j$(nproc)/;/^#MAKEFLAGS/s/^#//" /etc/makepkg.conf
+#sed -i "s/-j2/-j$(nproc)/;/^#MAKEFLAGS/s/^#//" /etc/makepkg.conf
 
-manualinstall yay || error "Failed to install AUR helper."
+#manualinstall yay || error "Failed to install AUR helper."
 
 # The command that does all the installing. Reads the progs.csv file and
 # installs each needed program the way required. Be sure to run this only after
